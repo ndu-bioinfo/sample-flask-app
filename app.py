@@ -7,7 +7,7 @@ app = Flask(__name__)
 # In-memory variant store
 variants = [
     {"id": 1, "gene": "BRCA1", "chrom": "17", "pos": 43044295, "ref": "A", "alt": "G", "qual": 99.0},
-    {"id": 2, "gene": "BRCA2", "chrom": "13", "pos": 32315474, "ref": "C", "alt": "T", "qual": 85.5},
+    {"id": 2, "gene": "Brca2", "chrom": "13", "pos": 32315474, "ref": "C", "alt": "T", "qual": 85.5},
     {"id": 3, "gene": "TP53",  "chrom": "17", "pos": 7676154,  "ref": "G", "alt": "A", "qual": 92.3},
     {"id": 4, "gene": "EGFR",  "chrom": "7",  "pos": 55259515, "ref": "T", "alt": "C", "qual": 78.1},
     {"id": 5, "gene": "KRAS",  "chrom": "12", "pos": 25398284, "ref": "C", "alt": "A", "qual": 95.7},
@@ -57,4 +57,4 @@ def search_variants():
 
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5000)
+    app.run(debug=True, port=5001)
