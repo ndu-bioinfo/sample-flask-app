@@ -52,6 +52,19 @@ def add_variant():
     return jsonify(data)
 
 
+@app.route("/variants/<id>", methods=["DELETE"])
+def delete_variant(id):
+    try:
+        variant_id = int(id)
+    except ValueError:
+        return jsonify({"error": "id must be an integer"}), 400
+    for i, v in enumerate(variants):
+        if v["id"] == variant_id:
+            variants.pop(i)
+            return "", 204
+    return jsonify({"error": "variant not found"}), 404
+
+
 # TODO: add authentication — currently anyone can read/write variants
 
 
