@@ -1,5 +1,8 @@
 """Variant Lookup API — a simple Flask app for querying genomic variants."""
 
+import os
+from functools import wraps
+
 from flask import Flask, request, jsonify
 
 app = Flask(__name__)
@@ -15,34 +18,81 @@ variants = [
 
 next_id = 6
 
+REQUIRED_FIELDS = {
+    "gene": str,
+    "chrom": str,
+    "pos": int,
+    "ref": str,
+    "alt": str,
+    "qual": float,
+}
+
+
+def require_api_key(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        expected_key = os.getenv("API_KEY")
+        if not expected_key:
+            return jsonify({"error": "server misconfigured"}), 500
+        auth_header = request.headers.get("Authorization", "")
+        parts = auth_header.split(" ", 1)
+        if len(parts) != 2 or parts[0] != "Bearer" or parts[1] != expected_key:
+            return jsonify({"error": "unauthorized"}), 401
+        return func(*args, **kwargs)
+    return wrapper
+
+
+@app.errorhandler(Exception)
+def handle_unexpected_error(exc: Exception):
+    return jsonify({"error": "an unexpected error occurred"}), 500
+
 
 @app.route("/variants", methods=["GET"])
 def get_variants():
     return jsonify(variants)
 
 
-@app.route("/variants/<id>", methods=["GET"])
-def get_variant(id):
-    # BUG 1: No type conversion — id comes in as string, compared to int
-    # BUG 2: Off-by-one — using id as index instead of matching by id field
-    variant = variants[int(id)]
-    return jsonify(variant)
+@app.route("/variants/<variant_id>", methods=["GET"])
+def get_variant(variant_id: str):
+    try:
+        parsed_id = int(variant_id)
+    except ValueError:
+        return jsonify({"error": "id must be an integer"}), 400
+    matched = [v for v in variants if v["id"] == parsed_id]
+    if not matched:
+        return jsonify({"error": "variant not found"}), 404
+    return jsonify(matched[0]), 200
 
 
 @app.route("/variants", methods=["POST"])
+@require_api_key
 def add_variant():
     global next_id
-    # BUG 3: No input validation — accepts any JSON (or crashes on non-JSON)
-    data = request.get_json()
-    # BUG 4: No check for required fields
-    data["id"] = next_id
+    body = request.get_json(force=True, silent=True)
+    if body is None or not isinstance(body, dict):
+        return jsonify({"error": "request body must be valid JSON"}), 400
+
+    for field_name in REQUIRED_FIELDS:
+        if field_name not in body:
+            return jsonify({"error": f"missing required field: {field_name}"}), 400
+
+    for extra_key in body:
+        if extra_key not in REQUIRED_FIELDS:
+            return jsonify({"error": f"unexpected field: {extra_key}"}), 400
+
+    for field_name, expected_type in REQUIRED_FIELDS.items():
+        value = body[field_name]
+        if expected_type is float:
+            if not isinstance(value, (int, float)):
+                return jsonify({"error": f"invalid type for field: {field_name}"}), 400
+            body[field_name] = float(value)
+        elif not isinstance(value, expected_type):
+            return jsonify({"error": f"invalid type for field: {field_name}"}), 400
+
+    body["id"] = next_id
     next_id += 1
-    variants.append(data)
-    # BUG 5: Returns 200 instead of 201 for resource creation
-    return jsonify(data)
-
-
-# TODO: add authentication — currently anyone can read/write variants
+    variants.append(body)
+    return jsonify(body), 201
 
 
 @app.route("/variants/search", methods=["GET"])
@@ -57,4 +107,4 @@ def search_variants():
 
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5001)
+    app.run(debug=os.getenv("FLASK_DEBUG", "false").lower() == "true", port=5001)
