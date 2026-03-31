@@ -1,6 +1,10 @@
 """Variant Lookup API — a simple Flask app for querying genomic variants."""
 
+import logging
 from flask import Flask, request, jsonify
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
@@ -18,7 +22,9 @@ next_id = 6
 
 @app.route("/variants", methods=["GET"])
 def get_variants():
-    return jsonify(variants)
+    response = jsonify(variants)
+    logger.info("%s %s %d", request.method, request.path, response.status_code)
+    return response
 
 
 @app.route("/variants/<id>", methods=["GET"])
@@ -26,7 +32,9 @@ def get_variant(id):
     # BUG 1: No type conversion — id comes in as string, compared to int
     # BUG 2: Off-by-one — using id as index instead of matching by id field
     variant = variants[int(id)]
-    return jsonify(variant)
+    response = jsonify(variant)
+    logger.info("%s %s %d", request.method, request.path, response.status_code)
+    return response
 
 
 @app.route("/variants", methods=["POST"])
@@ -39,7 +47,9 @@ def add_variant():
     next_id += 1
     variants.append(data)
     # BUG 5: Returns 200 instead of 201 for resource creation
-    return jsonify(data)
+    response = jsonify(data)
+    logger.info("%s %s %d", request.method, request.path, response.status_code)
+    return response
 
 
 # TODO: add authentication — currently anyone can read/write variants
@@ -53,7 +63,9 @@ def search_variants():
         results = [v for v in variants if v["gene"] == gene]
     else:
         results = variants
-    return jsonify(results)
+    response = jsonify(results)
+    logger.info("%s %s %d", request.method, request.path, response.status_code)
+    return response
 
 
 if __name__ == "__main__":
