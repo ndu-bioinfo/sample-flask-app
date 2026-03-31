@@ -1,8 +1,18 @@
 """Variant Lookup API — a simple Flask app for querying genomic variants."""
 
+import logging
 from flask import Flask, request, jsonify
 
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+logger = logging.getLogger(__name__)
+
 app = Flask(__name__)
+
+
+@app.after_request
+def log_request(response):
+    logger.info("%s %s %s", request.method, request.path, response.status_code)
+    return response
 
 # In-memory variant store
 variants = [
